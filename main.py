@@ -7,20 +7,20 @@ from ball import BallSprite, Player1Sprite, Player2Sprite, TableSprite, game
 # defining all of the constant values in all cap
 
 # exctract this to a separate file afterwards
-WIDTH, HEIGHT = 800, 800
+WIDTH, HEIGHT = 1200, 600
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("TT Masters")
 
 BACKGROUND_COLOR = (125, 195, 170)
-
-FPS = 24
+SCALE = 0.425
+FPS = 59
 VEL = 5
 PLAYER_WIDTH, PLAYER_HEIGHT = 75, 60
-TABLE_WIDTH, TABLE_HEIGHT = int(152.5 * 1.25), int(274 * 1.25)
-BALL_WIDTH, BALL_HEIGT = 16, 16
-PLAYER_1_START_X, PLAYER_1_START_Y = 400, 610
-PLAYER_2_START_X, PLAYER_2_START_Y = 400, 200
-TABLE_POS_X, TABLE_POS_Y = 323, 263
+TABLE_WIDTH, TABLE_HEIGHT = int(1391*SCALE), int(460*SCALE)
+BALL_WIDTH, BALL_HEIGT = 12, 12
+PLAYER_1_START_X, PLAYER_1_START_Y = 0, 0
+PLAYER_2_START_X, PLAYER_2_START_Y = 0, 0
+TABLE_POS_X, TABLE_POS_Y = 304, 300
 
 '''
 PLAYER_1 = pygame.image.load(
@@ -81,11 +81,11 @@ def main():
                     size = (PLAYER_WIDTH, PLAYER_HEIGHT))
                         
     TABLE = TableSprite('table',
-                    position=(TABLE_POS_X, TABLE_POS_Y),
-                    size = (TABLE_WIDTH, TABLE_HEIGHT))
+                    position=(TABLE_POS_X, TABLE_POS_Y)
+                    ,size = (TABLE_WIDTH, TABLE_HEIGHT))
     
     BALL = BallSprite('ball',
-                  position=(-100, -100),
+                  position=(400, 100),
                   size=(BALL_WIDTH, BALL_HEIGT))
     
     GAME = game(PLAYER_1, PLAYER_2, TABLE, BALL)

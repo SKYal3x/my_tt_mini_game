@@ -21,6 +21,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.images = [pygame.transform.scale(image, size) 
                        for image in self.images]
         self.index = 0
+        self.image = self.images[int(self.index)]
         
         self.rect = pygame.Rect(position, size)
         self.velocity = pygame.math.Vector2(0,0)
@@ -41,6 +42,7 @@ class AnimatedSprite(pygame.sprite.Sprite):
         
     def update(self):
         ''' This is the API for the sprite group .updatate() method'''
+
         self.index += 0.1
         
         if self.index >= len(self.images):
@@ -59,12 +61,13 @@ class BallSprite(AnimatedSprite):
                          position,
                          size)
                          
-        self.state = "ready_for_serve"
-        self.check_state()
-        
+        # not needed yet
+        self.state = "fall"
+        self.velocity.x = 1
+        self.velocity.y = 1
     def check_state(self):
-        pass
-        
+        self.velocity.y += 1
+ 
     def handle_movement(self):
         pass
         
@@ -105,7 +108,10 @@ class Player2Sprite(AnimatedSprite):
     pass
 
 class TableSprite(AnimatedSprite):
-    pass
+    """ overriding the update method, because the table is not animted
+    """
+    def update(self):
+        pass
 
 class game():
     def __init__(self, player1, player2, table, ball):
@@ -115,10 +121,15 @@ class game():
         self.ball = ball 
         
     def check_conditions(self):
-        responce_player1 = self.player1.rect.colliderect(self.ball.rect)
-        responce_player2 = self.player2.rect.colliderect(self.ball.rect)
-        if responce_player2:
+
+        ball_table_collision = pygame.sprite.spritecollide(
+                                    self.ball,
+                                    [self.table],
+                                    False,    # dokill argument defines if the sprite would be deleted afterwards
+                                    pygame.sprite.collide_mask # using mask collision
+                                    )
+        if ball_table_collision:
             self.ball.velocity.y = -self.ball.velocity.y
-        if responce_player1:
-            self.ball.velocity.y = -self.ball.velocity.y 
+        self.ball.check_state()
+   
         
