@@ -1,8 +1,10 @@
 #python 3.8
 import pygame 
 import os 
+import random 
 
 from physics import collision_norm
+from rules_scores import stack_of_three, eval_score
 
 class AnimatedSprite(pygame.sprite.Sprite):
     ''' This is a basic class for our further classes
@@ -58,7 +60,11 @@ class AnimatedSprite(pygame.sprite.Sprite):
         self.rect.y += self.velocity[1]
         
 class BallSprite(AnimatedSprite):
-
+    
+    # classvariable to determine contacts
+    # and thus calculate the points
+    CONTACTS = stack_of_three() 
+    
     def __init__(self,
                 image_name,
                 position:tuple([int,int]),
@@ -100,7 +106,19 @@ class BallSprite(AnimatedSprite):
             self.velocity.x = 21
             self.gravity = 1
             self.velocity.y = -11
-        
+    
+    def oponent_contact(self):
+            self.fly_counter = 0
+            self.velocity.x = random.randint(-17,-15)
+            self.velocity.y = random.randint(-14,-12)
+            self.gravity = 1
+            self.TopSpin = False
+            self.BackSpin = False
+            print(self.velocity.x, self.velocity.y)
+            
+    def table_contact(self, old_velocity):
+        self.velocity.y = -old_velocity + self.gravity
+    
     def check_state(self):
         """function for gravity changes
         in order to mimic the spin behavior
@@ -121,14 +139,19 @@ class BallSprite(AnimatedSprite):
 
 
 class Player1Sprite(AnimatedSprite):
-    ''' No need for init, as we inhered the nneded stuff from the parent '''
+
     def __init__(self,
                 image_name,
                 position:tuple([int,int]),
                 size:tuple([int,int])):
+        """ the only reason for overwriting 
+            the parents init method is to add
+            own attributes to the constructor
+        """
         super().__init__(image_name,
                          position,
                          size)
+        self.score = 0
         # add attributes later
     def handle_movement(self, keys_pressed):
     
@@ -142,38 +165,65 @@ class Player1Sprite(AnimatedSprite):
         if keys_pressed[pygame.K_DOWN]:
             self.image = pygame.transform.rotate(self.image, -90)
             self.rect = self.image.get_rect()
+    
+    def ball_contact(self):
+        BallSprite.CONTACTS.update(self)
             
-class Player2Sprite(AnimatedSprite):
-   
+class Player2Sprite(Player1Sprite):
+    """ Same as player1, but we 
+        erase the handle_movement method
+        as the players2 movement would be handled by the pc
+    """
     def handle_movement(self):
         pass
-
+        
 class TableSprite(AnimatedSprite):
     """ overriding the update method, because the table is not animated
     """
     def update(self):
         pass
+    
+    def ball_contact(self):
+        BallSprite.CONTACTS.update(self)
         
 class NetSprite(AnimatedSprite):
     pass
     
+class FloorSprite(AnimatedSprite):
+    
+    def ball_contact(self):
+        BallSprite.CONTACTS.update(self)
+    
 class game():
-    def __init__(self, player1, player2, table, net, ball):
+    def __init__(self, player1, player2, table, net, ball, floor, text1, text2):
+    
+        ### test ###
+        self.crash_sound = pygame.mixer.Sound("Assets/sound/Stalin.wav")
+        ############
         self.player1 = player1
         self.player2 = player2
         self.table = table
         self.net = net
         self.ball = ball 
+        self.floor = floor
+        self.text1 = text1
+        self.text2 = text2
+        
         self.ball_mask = pygame.mask.from_surface(self.ball.image)
         self.table_mask = pygame.mask.from_surface(self.table.image)
         self.net_mask = pygame.mask.from_surface(self.net.image)
-        
+        self.floor_mask = pygame.mask.from_surface(self.floor.image)
         self.player1_mask = pygame.mask.from_surface(self.player1.image)
+        
+        
+        #some statics for tests REMOVE LATER
+        self.TEST_PLAYER2_VELOCITY = -21
         
     def handle_keys(self, keys_pressed):
         """placing the ball on its spot"""
         if keys_pressed[pygame.K_SPACE]:
-            self.ball.rect.topleft = (290, 50)
+            self.player2.rect.y = 400
+            self.ball.rect.topleft = (self.player2.rect.x, 50)
             self.ball.velocity.x = 0
             self.ball.velocity.y = 1
             self.ball.gravity = 1
@@ -184,19 +234,20 @@ class game():
             self.ball.TopSpin = False
             self.ball.BackSpin = True
 
-            
+             
     def check_conditions(self):
         
         """
         The opponents AI part :-D 
         """
         if self.ball.rect.x > 572:
+            # the desired position
             self.des_pos = self.ball.rect.y -10
            
             if self.player2.rect.y > self.des_pos:
-                self.player2.rect.y -= 1
+                self.player2.rect.y -= 5
             elif self.player2.rect.y < self.des_pos:
-                self.player2.rect.y += 1
+                self.player2.rect.y += 5
         
         """
         End of the AI part :-D
@@ -222,7 +273,12 @@ class game():
                                     (self.net.rect.x-self.ball.rect.x, 
                                      self.net.rect.y-self.ball.rect.y-1)
                                     )
-                                    
+        
+        ball_floor_overlap = self.ball_mask.overlap_area(
+                                    self.floor_mask,
+                                    (self.floor.rect.x-self.ball.rect.x, 
+                                     self.floor.rect.y-self.ball.rect.y-1)
+                                    )
         #print(self.ball.rect.topleft)
         # save this one for later
         # ball_player1_collision = pygame.sprite.spritecollide(
@@ -236,8 +292,20 @@ class game():
         
 
         if ball_table_overlap:
-            self.ball.velocity.y = -self.old_velocity + self.ball.gravity
+        
+            self.ball.table_contact(self.old_velocity)
             
+            # self.player1.score = 0 if                     \
+            # (BallSprite.CONTACTS.first == self.table) &   \
+            # (BallSprite.CONTACTS.last == self.table)      \
+            # else self.player1.score
+            eval_score(self.ball, self.player1, self.player2)
+            
+            #extra function for this later
+            self.text1.update_text_to_display(self.player1.score)
+            self.text2.update_text_to_display(self.player2.score)
+            
+            self.table.ball_contact()
 
         if ball_net_overlap:
             """ calculating the colision normal for the ball and the net
@@ -261,12 +329,37 @@ class game():
             self.ball.velocity.x = dx
             self.ball.velocity.y = dy
             
+        if ball_floor_overlap:
+            dx, dy = collision_norm(self.ball_mask, 
+                                    self.floor_mask, 
+                                    self.ball.rect.x,
+                                    self.ball.rect.y-1,
+                                    self.floor.rect.x,
+                                    self.floor.rect.y)
+            
+            # dx = self.ball_mask.overlap_area(self.net_mask, (self.net.rect.x-self.ball.rect.x + 1, self.net.rect.y-self.ball.rect.y-1)) \
+                # - self.ball_mask.overlap_area(self.net_mask, (self.net.rect.x-self.ball.rect.x - 1, self.net.rect.y-self.ball.rect.y-1))
+            # dy = self.ball_mask.overlap_area(self.net_mask, (self.net.rect.x-self.ball.rect.x, self.net.rect.y-self.ball.rect.y-1 + 1)) \
+                # - self.ball_mask.overlap_area(self.net_mask, (self.net.rect.x-self.ball.rect.x, self.net.rect.y-self.ball.rect.y-1 - 1))
+            
+            # print(dx, dy)
+            """ End of calculation
+            """
+
+            self.ball.velocity.x = dx
+            self.ball.velocity.y = dy   
+            
+            # separete into distinct funciton later
+            self.player1.score = 0
+            self.text1.update_text_to_display(self.player1.score)
+
+            
         if self.ball.rect.y + self.ball.velocity.y > self.table.rect.y - self.ball.offset\
         and  self.ball.rect.x > self.table.rect.left       \
         and  self.ball.rect.x < self.table.rect.right:
             self.old_velocity = self.ball.velocity.y
             self.new_velocity = self.table.rect.y - self.ball.offset - self.ball.rect.y - self.ball.gravity
-            print("velocity correction: ", self.old_velocity, self.new_velocity)
+            #print("velocity correction: ", self.old_velocity, self.new_velocity)
             self.ball.velocity.y = self.new_velocity
 
             # # #if self.ball.rect.y > ball_table_overlap[1]:
@@ -275,17 +368,24 @@ class game():
                 # # # #self.ball.velocity.y = - self.ball.velocity.y + 1
                 # # # self.ball._check_state = False
         if ball_player1_collision:
+            
             self.ball.player_contact()
+            
+
+            # score setting into seperate function
+            self.player1.score = self.player1.score + 1 if BallSprite.CONTACTS.last == self.table else 0
+            self.text1.update_text_to_display(self.player1.score)
+            pygame.mixer.Sound.play(self.crash_sound)
+            
+            self.player1.ball_contact()
         
         if ball_player2_collision:
             
-            self.ball.fly_counter = 0
-            self.ball.velocity.x = -21
-            self.ball.velocity.y = -11
-            self.ball.gravity = 1
-            self.ball.TopSpin = False
-            self.ball.BackSpin = False
-    
+            self.ball.oponent_contact()
+            self.player2.ball_contact()
+            
+            # if not self.score_player1 % 5:
+               # self.TEST_PLAYER2_VELOCITY -= 1  
         self.ball.check_state()
    
         
