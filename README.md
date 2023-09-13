@@ -8,7 +8,7 @@ To start the game install the requirements and run main.py
 Only arcade mode is working as of now. To serve the ball press space.
 
 
-*!!! TODO !!! Code Refactoring !!!*
+*!!! TODO !!! Code Refactoring, separate the constants from the code into a config file !!!*
 
 
 Next steps imply:
