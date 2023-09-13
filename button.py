@@ -2,8 +2,6 @@
 import pygame
 
 class Button():
-''' inspired by https://www.youtube.com/watch?v=G8MYGDf_9ho
-'''
 	def __init__(self, x, y, image, scale):
 		width = image.get_width()
 		height = image.get_height()
